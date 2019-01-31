@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 void main() => runApp(MyApp());
@@ -27,6 +29,46 @@ class MyHomePage extends StatefulWidget {
 
 const double BOX_SIZE = 80;
 
+const int BOX_VALUE_NONE = 0;
+const int BOX_VALUE_2 = 2;
+const int BOX_VALUE_4 = 4;
+const int BOX_VALUE_8 = 8;
+const int BOX_VALUE_16 = 16;
+const int BOX_VALUE_32 =32;
+
+class BoxUnitManager {
+
+  static BoxUnit randomBox(){
+    Random random = Random();
+    int value = pow(2, random.nextInt(6)).toInt();
+    return create(value);
+  }
+
+  static BoxUnit create(int value) {
+    if(value == BOX_VALUE_2) {
+      return BoxUnit(
+          value: 2,
+          colorBackground: Color(0xffeee4d9),
+          colorText: Color(0xff776e64));
+    }else if(value == BOX_VALUE_4) {
+      return BoxUnit(
+          value: 4,
+          colorBackground: Color(0xffede0c8),
+          colorText: Color(0xff776e64));
+    }else if(value == BOX_VALUE_8) {
+      return BoxUnit(
+          value: 8,
+          colorBackground: Color(0xfff2b179),
+          colorText: Color(0xffffffff));
+    }else {
+      return BoxUnit(
+          value: 0,
+          colorBackground: Color(0xffccc0b3),
+          colorText: Color(0x00776e64));
+    }
+  }
+}
+
 class BoxUnit {
   int value;
   Color colorBackground;
@@ -42,6 +84,17 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     initTable();
     super.initState();
+  }
+
+  void initTable() {
+    table = List();
+    for (int row = 0; row < 4; row++) {
+      List<BoxUnit> list = List();
+      for (int col = 0; col < 4; col++) {
+        list.add(BoxUnitManager.randomBox());
+      }
+      table.add(list);
+    }
   }
 
   @override
@@ -81,23 +134,11 @@ class _MyHomePageState extends State<MyHomePage> {
       width: BOX_SIZE,
       height: BOX_SIZE,
       margin: EdgeInsets.all(3),
-      child: Center(child: Text("" + table[row][col].value.toString(),style: TextStyle(fontSize: 18, color:table[row][col].colorText
-      ),)),
+      child: Center(child: Text(
+        "" + table[row][col].value.toString(),
+        style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: table[row][col].colorText
+        ),)),
     );
-  }
-
-  void initTable() {
-    table = List();
-    for (int row = 0; row < 4; row++) {
-      List<BoxUnit> list = List();
-      for (int col = 0; col < 4; col++) {
-        list.add(BoxUnit(
-            value: 2,
-            colorBackground: Color(0xffeee4d9),
-            colorText: Color(0xff776e64)));
-      }
-      table.add(list);
-    }
   }
 
   List<Widget> buildRowBoxUnit(int row) {
