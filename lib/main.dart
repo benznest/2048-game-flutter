@@ -70,8 +70,7 @@ class BlockUnitManager {
       return BlockUnit(
           value: value,
           colorBackground: Color(0xffccc0b3),
-          colorText: Color(0x00ffffff),
-          fontSize: 26);
+          colorText: Color(0x00ffffff));
     } else if (value == BLOCK_VALUE_2) {
       return BlockUnit(
           value: value,
@@ -160,11 +159,19 @@ class BlockUnit {
 class _MyHomePageState extends State<MyHomePage> {
   List<List<BlockUnit>> table;
   bool delayMode = false;
+  int score = 0;
 
   @override
   void initState() {
-    initTable();
+    initGame();
     super.initState();
+  }
+
+  void initGame() {
+    score = 0;
+    initTable();
+    randomSimpleBlockToTable();
+    randomSimpleBlockToTable();
   }
 
   void initTable() {
@@ -172,7 +179,7 @@ class _MyHomePageState extends State<MyHomePage> {
     for (int row = 0; row < 4; row++) {
       List<BlockUnit> list = List();
       for (int col = 0; col < 4; col++) {
-        list.add(BlockUnitManager.randomBlock(maxPow: 2));
+        list.add(BlockUnitManager.create(BLOCK_VALUE_NONE));
       }
       table.add(list);
     }
@@ -184,6 +191,7 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Container(
           color: Color(0xfffbf9f3),
           child: Column(children: <Widget>[
+            buildMenu(),
             Expanded(
                 child: Center(
                   child: Container(
@@ -240,6 +248,42 @@ class _MyHomePageState extends State<MyHomePage> {
     return list;
   }
 
+  Container buildMenu() {
+    return Container(
+      padding: EdgeInsets.only(top: 36, bottom: 12, left: 16, right: 16),
+      color: Color(0xffede0c8),
+      child:
+      Row(mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            GestureDetector(onTap: () {
+              restart();
+            },
+                child: Container(constraints: BoxConstraints(minWidth: 120),
+                    decoration: BoxDecoration(color: Color(0xff8f7a66),
+                        borderRadius: BorderRadius.circular(4)),
+                    padding: EdgeInsets.all(12),
+                    child: Column(children: <Widget>[
+                      Text("New Game", style: TextStyle(fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white))
+                    ]))),
+            Expanded(child: Container()),
+            Container(constraints: BoxConstraints(minWidth: 120),
+                decoration: BoxDecoration(color: Color(0xffbbada0),
+                    borderRadius: BorderRadius.circular(4)),
+                padding: EdgeInsets.all(4),
+                child: Column(children: <Widget>[
+                  Text("SCORE", style: TextStyle(fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white)),
+                  Text("$score", style: TextStyle(fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white))
+                ]))
+          ]),
+    );
+  }
+
   Container buildControlButton() {
     return Container(
       padding: EdgeInsets.all(8),
@@ -266,25 +310,32 @@ class _MyHomePageState extends State<MyHomePage> {
   GestureDetector buildControlDirectionButton(IconData icon, int direction) {
     return GestureDetector(
         onTap: () {
-          if(!delayMode) {
+          if (!delayMode) {
             delayMode = true;
+            bool move = true;
             if (direction == DIRECTION_LEFT) {
-              moveLeft();
+              move = moveLeft();
             } else if (direction == DIRECTION_RIGHT) {
-              moveRight();
+              move = moveRight();
             } else if (direction == DIRECTION_DOWN) {
-              moveDown();
+              move = moveDown();
             } else if (direction == DIRECTION_UP) {
-              moveUp();
+              move = moveUp();
             }
 
-
-            Future.delayed(const Duration(milliseconds: 200), () {
-              setState(() {
-                delayMode = false;
-                randomSimpleBlockToTable();
+            if (move) {
+              Future.delayed(const Duration(milliseconds: 200), () {
+                setState(() {
+                  delayMode = false;
+                  bool ableNewBlock = randomSimpleBlockToTable();
+                  if (!ableNewBlock) {
+                    showGameOverDialog();
+                  }
+                });
               });
-            });
+            }else{
+              //
+            }
           }
         },
         child: Container(
@@ -311,40 +362,59 @@ class _MyHomePageState extends State<MyHomePage> {
         ));
   }
 
-  moveLeft() {
+  bool moveLeft() {
+    bool move = false;
     setState(() {
       for (int row = 0; row < 4; row++) {
+        bool moveByNormal = moveAllBlockToLeft(row);
+        bool moveByCombine = combineAllBlockToLeft(row);
         moveAllBlockToLeft(row);
-        combineAllBlockToLeft(row);
-        moveAllBlockToLeft(row);
+        move = move || moveByNormal || moveByCombine;
       }
     });
+    return move;
   }
 
-  void combineAllBlockToLeft(int row) {
+  bool combineAllBlockToLeft(int row) {
+    bool move = false;
     if (table[row][0].value == table[row][1].value &&
         table[row][0].value != BLOCK_VALUE_NONE) {
       table[row][0] = BlockUnitManager.create(table[row][0].value * 2);
       table[row][1] = BlockUnitManager.create(BLOCK_VALUE_NONE);
+      score += table[row][0].value;
+      move = true;
     }
     if (table[row][1].value == table[row][2].value &&
         table[row][1].value != BLOCK_VALUE_NONE) {
       table[row][1] = BlockUnitManager.create(table[row][1].value * 2);
       table[row][2] = BlockUnitManager.create(BLOCK_VALUE_NONE);
+      score += table[row][1].value;
+      move = true;
     }
     if (table[row][2].value == table[row][3].value &&
         table[row][2].value != BLOCK_VALUE_NONE) {
       table[row][2] = BlockUnitManager.create(table[row][2].value * 2);
       table[row][3] = BlockUnitManager.create(BLOCK_VALUE_NONE);
+      score += table[row][2].value;
+      move = true;
     }
+    return move;
   }
 
-  void moveAllBlockToLeft(int row) {
+  bool moveAllBlockToLeft(int row) {
+    bool move = false;
+
     int col = 0;
     int count = 0;
     // move all BLOCK in row to left
     while (count < 4 && col < 4) {
       if (table[row][col].value == BLOCK_VALUE_NONE) {
+        if (col < 4 - 1) {
+          if (table[row][col + 1].value != BLOCK_VALUE_NONE) {
+            move = true;
+          }
+        }
+
         BlockUnit blockEmpty = table[row][col];
         table[row].removeAt(col);
         table[row].add(blockEmpty);
@@ -353,23 +423,34 @@ class _MyHomePageState extends State<MyHomePage> {
         col++;
       }
     }
+    return move;
   }
 
-  moveRight() {
+  bool moveRight() {
+    bool move = false;
     setState(() {
       for (int row = 0; row < 4; row++) {
+        bool moveByNormal = moveAllBlockToRight(row);
+        bool moveByCombine = combineAllBlockToRight(row);
         moveAllBlockToRight(row);
-        combineAllBlockToRight(row);
-        moveAllBlockToRight(row);
+        move = move || moveByNormal || moveByCombine;
       }
     });
+    return move;
   }
 
-  void moveAllBlockToRight(int row) {
+  bool moveAllBlockToRight(int row) {
+    bool move = false;
     int col = 3;
     int count = 0;
     while (count < 4 && col >= 0) {
       if (table[row][col].value == BLOCK_VALUE_NONE) {
+        if (col > 0) {
+          if (table[row][col - 1].value != BLOCK_VALUE_NONE) {
+            move = true;
+          }
+        }
+
         BlockUnit blockEmpty = table[row][col];
         table[row].removeAt(col);
         table[row].insert(0, blockEmpty);
@@ -378,37 +459,50 @@ class _MyHomePageState extends State<MyHomePage> {
         col--;
       }
     }
+    return move;
   }
 
-  void combineAllBlockToRight(int row) {
+  bool combineAllBlockToRight(int row) {
+    bool move = false;
     if (table[row][3].value == table[row][2].value &&
         table[row][3].value != BLOCK_VALUE_NONE) {
       table[row][3] = BlockUnitManager.create(table[row][3].value * 2);
       table[row][2] = BlockUnitManager.create(BLOCK_VALUE_NONE);
+      score += table[row][3].value;
+      move = true;
     }
     if (table[row][2].value == table[row][1].value &&
         table[row][2].value != BLOCK_VALUE_NONE) {
       table[row][2] = BlockUnitManager.create(table[row][2].value * 2);
       table[row][1] = BlockUnitManager.create(BLOCK_VALUE_NONE);
+      score += table[row][2].value;
+      move = true;
     }
     if (table[row][1].value == table[row][0].value &&
         table[row][1].value != BLOCK_VALUE_NONE) {
       table[row][1] = BlockUnitManager.create(table[row][1].value * 2);
       table[row][0] = BlockUnitManager.create(BLOCK_VALUE_NONE);
+      score += table[row][1].value;
+      move = true;
     }
+    return move;
   }
 
-  moveDown() {
+  bool moveDown() {
+    bool move = false;
     setState(() {
       for (int col = 0; col < 4; col++) {
+        bool moveByNormal = moveAllBlockToDown(col);
+        bool moveByCombine = combineAllBlockToDown(col);
         moveAllBlockToDown(col);
-        combineAllBlockToDown(col);
-        moveAllBlockToDown(col);
+        move = move || moveByNormal || moveByCombine;
       }
     });
+    return move;
   }
 
-  void moveAllBlockToDown(int col) {
+  bool moveAllBlockToDown(int col) {
+    bool move = false;
     int row = 3;
     int count = 0;
 
@@ -420,6 +514,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
     while (count < 4 && row >= 0) {
       if (listVertical[row].value == BLOCK_VALUE_NONE) {
+        if (row > 0) {
+          if (listVertical[row - 1].value != BLOCK_VALUE_NONE) {
+            move = true;
+          }
+        }
+
         BlockUnit blockEmpty = listVertical[row];
         listVertical.removeAt(row);
         listVertical.insert(0, blockEmpty);
@@ -432,37 +532,50 @@ class _MyHomePageState extends State<MyHomePage> {
     for (int row = 0; row < 4; row++) {
       table[row][col] = listVertical[row];
     }
+    return move;
   }
 
-  void combineAllBlockToDown(int col) {
+  bool combineAllBlockToDown(int col) {
+    bool move = false;
     if (table[3][col].value == table[2][col].value &&
         table[3][col].value != BLOCK_VALUE_NONE) {
       table[3][col] = BlockUnitManager.create(table[3][col].value * 2);
       table[2][col] = BlockUnitManager.create(BLOCK_VALUE_NONE);
+      score += table[3][col].value;
+      move = true;
     }
     if (table[2][col].value == table[1][col].value &&
         table[2][col].value != BLOCK_VALUE_NONE) {
       table[2][col] = BlockUnitManager.create(table[2][col].value * 2);
       table[1][col] = BlockUnitManager.create(BLOCK_VALUE_NONE);
+      score += table[2][col].value;
+      move = true;
     }
     if (table[1][col].value == table[0][col].value &&
         table[1][col].value != BLOCK_VALUE_NONE) {
       table[1][col] = BlockUnitManager.create(table[1][col].value * 2);
       table[0][col] = BlockUnitManager.create(BLOCK_VALUE_NONE);
+      score += table[1][col].value;
+      move = true;
     }
+    return move;
   }
 
-  moveUp() {
+  bool moveUp() {
+    bool move = false;
     setState(() {
       for (int col = 0; col < 4; col++) {
+        bool moveByNormal = moveAllBlockToUp(col);
+        bool moveByCombine = combineAllBlockToUp(col);
         moveAllBlockToUp(col);
-        combineAllBlockToUp(col);
-        moveAllBlockToUp(col);
+        move = move || moveByNormal || moveByCombine;
       }
     });
+    return move;
   }
 
-  void moveAllBlockToUp(int col) {
+  bool moveAllBlockToUp(int col) {
+    bool move = false;
     int row = 0;
     int count = 0;
 
@@ -474,6 +587,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
     while (count < 4 && row < 4) {
       if (listVertical[row].value == BLOCK_VALUE_NONE) {
+        if (row < 4 - 1) {
+          if (listVertical[row + 1].value != BLOCK_VALUE_NONE) {
+            move = true;
+          }
+        }
+
         BlockUnit blockEmpty = listVertical[row];
         listVertical.removeAt(row);
         listVertical.add(blockEmpty);
@@ -486,27 +605,36 @@ class _MyHomePageState extends State<MyHomePage> {
     for (int row = 0; row < 4; row++) {
       table[row][col] = listVertical[row];
     }
+    return move;
   }
 
-  void combineAllBlockToUp(int col) {
+  bool combineAllBlockToUp(int col) {
+    bool move = false;
     if (table[0][col].value == table[1][col].value &&
         table[0][col].value != BLOCK_VALUE_NONE) {
       table[0][col] = BlockUnitManager.create(table[0][col].value * 2);
       table[1][col] = BlockUnitManager.create(BLOCK_VALUE_NONE);
+      score += table[0][col].value;
+      move = true;
     }
     if (table[1][col].value == table[2][col].value &&
         table[1][col].value != BLOCK_VALUE_NONE) {
       table[1][col] = BlockUnitManager.create(table[1][col].value * 2);
       table[2][col] = BlockUnitManager.create(BLOCK_VALUE_NONE);
+      score += table[1][col].value;
+      move = true;
     }
     if (table[2][col].value == table[3][col].value &&
         table[2][col].value != BLOCK_VALUE_NONE) {
       table[2][col] = BlockUnitManager.create(table[2][col].value * 2);
       table[3][col] = BlockUnitManager.create(BLOCK_VALUE_NONE);
+      score += table[2][col].value;
+      move = true;
     }
+    return move;
   }
 
-  randomSimpleBlockToTable() {
+  bool randomSimpleBlockToTable() {
     List<Coordinate> listBlockUnitEmpty = List();
     for (int row = 0; row < 4; row++) {
       for (int col = 0; col < 4; col++) {
@@ -516,11 +644,53 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     }
 
-    Random random = Random();
-    int index = random.nextInt(listBlockUnitEmpty.length);
-    int row = listBlockUnitEmpty[index].row;
-    int col = listBlockUnitEmpty[index].col;
 
-    table[row][col] = BlockUnitManager.randomSimpleBlock();
+    if (listBlockUnitEmpty.isNotEmpty) {
+      Random random = Random();
+      int index = random.nextInt(listBlockUnitEmpty.length);
+      int row = listBlockUnitEmpty[index].row;
+      int col = listBlockUnitEmpty[index].col;
+
+      table[row][col] = BlockUnitManager.randomSimpleBlock();
+      return true;
+    }
+    return false;
+  }
+
+  void restart() {
+    setState(() {
+      initGame();
+    });
+  }
+
+  void showGameOverDialog() {
+    // flutter defined function
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        // return object of type Dialog
+        return AlertDialog(
+            content: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+              Text("Game Over ):",
+                  style: TextStyle(
+                      fontSize: 32,
+                      color: Colors.pink[800],
+                      fontWeight: FontWeight.bold)),
+              RaisedButton(
+                padding: EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+                color: Color(0xff8f7a66),
+                child: Text("Play again",
+                    style: TextStyle(
+                        fontSize: 22,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold)),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  restart();
+                },
+              )
+            ]));
+      },
+    );
   }
 }
