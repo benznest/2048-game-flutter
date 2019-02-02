@@ -1,6 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:game_2048_flutter/block_unit.dart';
+import 'package:game_2048_flutter/coordinate.dart';
+import 'package:game_2048_flutter/block_unit_manager.dart';
 
 void main() => runApp(MyApp());
 
@@ -29,132 +32,15 @@ class MyHomePage extends StatefulWidget {
 
 const double BLOCK_SIZE = 80;
 
-const int COUNT_BLOCK_TYPE = 12;
-const int BLOCK_VALUE_NONE = 1;
-const int BLOCK_VALUE_2 = 2;
-const int BLOCK_VALUE_4 = 4;
-const int BLOCK_VALUE_8 = 8;
-const int BLOCK_VALUE_16 = 16;
-const int BLOCK_VALUE_32 = 32;
-const int BLOCK_VALUE_64 = 64;
-const int BLOCK_VALUE_128 = 128;
-const int BLOCK_VALUE_256 = 256;
-const int BLOCK_VALUE_512 = 512;
-const int BLOCK_VALUE_1024 = 1024;
-const int BLOCK_VALUE_2048 = 2048;
+
 
 const int DIRECTION_UP = 0;
 const int DIRECTION_LEFT = 1;
 const int DIRECTION_RIGHT = 2;
 const int DIRECTION_DOWN = 3;
 
-class BlockUnitManager {
-  static BlockUnit randomBlock({int maxPow = COUNT_BLOCK_TYPE}) {
-    Random random = Random();
-    int value = pow(2, random.nextInt(maxPow)).toInt();
-    return create(value);
-  }
-
-  static BlockUnit randomSimpleBlock() {
-    Random random = Random();
-    int value = random.nextInt(2);
-    if (value == 0) {
-      return create(BLOCK_VALUE_2);
-    }
-    return create(BLOCK_VALUE_4);
-  }
 
 
-  static BlockUnit create(int value) {
-    if (value == BLOCK_VALUE_NONE) {
-      return BlockUnit(
-          value: value,
-          colorBackground: Color(0xffccc0b3),
-          colorText: Color(0x00ffffff));
-    } else if (value == BLOCK_VALUE_2) {
-      return BlockUnit(
-          value: value,
-          colorBackground: Color(0xffeee4d9),
-          colorText: Color(0xff776e64));
-    } else if (value == BLOCK_VALUE_4) {
-      return BlockUnit(
-          value: value,
-          colorBackground: Color(0xffede0c8),
-          colorText: Color(0xff776e64));
-    } else if (value == BLOCK_VALUE_8) {
-      return BlockUnit(
-          value: value,
-          colorBackground: Color(0xfff2b179),
-          colorText: Color(0xffffffff));
-    } else if (value == BLOCK_VALUE_16) {
-      return BlockUnit(
-          value: value,
-          colorBackground: Color(0xfff49663),
-          colorText: Color(0xffffffff));
-    } else if (value == BLOCK_VALUE_32) {
-      return BlockUnit(
-          value: value,
-          colorBackground: Color(0xfff77b63),
-          colorText: Color(0xffffffff));
-    } else if (value == BLOCK_VALUE_64) {
-      return BlockUnit(
-          value: value,
-          colorBackground: Color(0xfff45639),
-          colorText: Color(0xffffffff));
-    } else if (value == BLOCK_VALUE_128) {
-      return BlockUnit(
-          value: value,
-          colorBackground: Color(0xffedce71),
-          colorText: Color(0xffffffff));
-    } else if (value == BLOCK_VALUE_256) {
-      return BlockUnit(
-          value: value,
-          colorBackground: Color(0xfff0cb63),
-          colorText: Color(0xffffffff));
-    } else if (value == BLOCK_VALUE_512) {
-      return BlockUnit(
-          value: value,
-          colorBackground: Color(0xffecc752),
-          colorText: Color(0xffffffff));
-    } else if (value == BLOCK_VALUE_1024) {
-      return BlockUnit(
-          value: value,
-          colorBackground: Color(0xffeec62c),
-          colorText: Color(0xffffffff),
-          fontSize: 26);
-    } else if (value == BLOCK_VALUE_2048) {
-      return BlockUnit(
-          value: value,
-          colorBackground: Color(0xffeec309),
-          colorText: Color(0xffffffff),
-          fontSize: 26);
-    } else {
-      return BlockUnit(
-          value: value,
-          colorBackground: Color(0xffeec309),
-          colorText: Color(0xffffffff));
-    }
-  }
-}
-
-class Coordinate {
-  int row;
-  int col;
-
-  Coordinate({this.row, this.col});
-}
-
-class BlockUnit {
-  int value;
-  Color colorBackground;
-  Color colorText;
-  double fontSize;
-
-  BlockUnit({this.value = 0,
-    this.colorBackground,
-    this.colorText,
-    this.fontSize = 32});
-}
 
 class _MyHomePageState extends State<MyHomePage> {
   List<List<BlockUnit>> table;
@@ -184,6 +70,20 @@ class _MyHomePageState extends State<MyHomePage> {
       table.add(list);
     }
   }
+
+  void initTestTable() {
+    table = List();
+    int value = 2;
+    for (int row = 0; row < 4; row++) {
+      List<BlockUnit> list = List();
+      for (int col = 0; col < 4; col++) {
+        list.add(BlockUnitManager.create(value));
+        value *= 2;
+      }
+      table.add(list);
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -323,19 +223,23 @@ class _MyHomePageState extends State<MyHomePage> {
               move = moveUp();
             }
 
-            if (move) {
-              Future.delayed(const Duration(milliseconds: 200), () {
+
+            Future.delayed(const Duration(milliseconds: 200), () {
+              if (move) {
+                delayMode = false;
                 setState(() {
-                  delayMode = false;
-                  bool ableNewBlock = randomSimpleBlockToTable();
-                  if (!ableNewBlock) {
+                  randomSimpleBlockToTable();
+                  if (isGameOver()) {
                     showGameOverDialog();
                   }
                 });
-              });
-            }else{
-              //
-            }
+              } else {
+                delayMode = false;
+                if (isGameOver()) {
+                  showGameOverDialog();
+                }
+              }
+            });
           }
         },
         child: Container(
@@ -427,6 +331,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   bool moveRight() {
+    print("move right");
     bool move = false;
     setState(() {
       for (int row = 0; row < 4; row++) {
@@ -635,16 +540,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   bool randomSimpleBlockToTable() {
-    List<Coordinate> listBlockUnitEmpty = List();
-    for (int row = 0; row < 4; row++) {
-      for (int col = 0; col < 4; col++) {
-        if (table[row][col].value == BLOCK_VALUE_NONE) {
-          listBlockUnitEmpty.add(Coordinate(row: row, col: col));
-        }
-      }
-    }
-
-
+    List<Coordinate> listBlockUnitEmpty = getBlockEmptyList();
     if (listBlockUnitEmpty.isNotEmpty) {
       Random random = Random();
       int index = random.nextInt(listBlockUnitEmpty.length);
@@ -657,10 +553,52 @@ class _MyHomePageState extends State<MyHomePage> {
     return false;
   }
 
+  List<Coordinate> getBlockEmptyList() {
+    List<Coordinate> listBlockUnitEmpty = List();
+    for (int row = 0; row < 4; row++) {
+      for (int col = 0; col < 4; col++) {
+        if (table[row][col].value == BLOCK_VALUE_NONE) {
+          listBlockUnitEmpty.add(Coordinate(row: row, col: col));
+        }
+      }
+    }
+    return listBlockUnitEmpty;
+  }
+
   void restart() {
     setState(() {
       initGame();
     });
+  }
+
+  bool isGameOver() {
+    for (int row = 0; row < 4; row++) {
+      for (int col = 0; col < 4; col++) {
+        if (table[row][col].value == BLOCK_VALUE_NONE) {
+          return false;
+        }
+        if (col < 4 - 1) {
+          if (table[row][col].value == table[row][col + 1].value) {
+            return false;
+          }
+        }
+      }
+    }
+
+    for (int col = 0; col < 4; col++) {
+      for (int row = 0; row < 4; row++) {
+        if (table[row][col].value == BLOCK_VALUE_NONE) {
+          return false;
+        }
+        if (row < 4 - 1) {
+          if (table[row][col].value == table[row + 1][col].value) {
+            return false;
+          }
+        }
+      }
+    }
+
+    return true;
   }
 
   void showGameOverDialog() {
